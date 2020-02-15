@@ -1,15 +1,37 @@
-FROM python:3.6.3
+FROM ubuntu:latest
 
 ENV BIND_PORT 5000
 ENV REDIS_HOST localhost
 ENV REDIS_PORT 6379
 
+LABEL maintainer="Dougal Graham<dougalg@gmail.com>"
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade
+RUN DEBIAN_FRONTEND=noninteractive apt-get -yq install apt-utils net-tools nginx python3-pip uwsgi-plugin-python3
+
+RUN update-alternatives --set uwsgi /usr/bin/uwsgi_python36
+
 COPY ./requirements.txt /requirements.txt
-
-RUN pip install -r /requirements.txt
-
 COPY ./app.py /app.py
+COPY ./wsgi.py /wsgi.py
 
-EXPOSE $BIND_PORT
+RUN pip3 install --upgrade pip
+RUN pip3 install -r requirements.txt
 
-CMD [ "python", "/app.py" ]
+RUN useradd -ms /bin/bash aurora
+# RUN useradd -ms /bin/bash aurora && \
+# 	rm -f /etc/nginx/fastcgi.conf /etc/nginx/fastcgi_params && \
+# 	rm -f /etc/nginx/snippets/fastcgi-php.conf /etc/nginx/snippets/snakeoil.conf
+
+EXPOSE 80
+EXPOSE ${BIND_PORT}
+# EXPOSE 443
+
+# COPY nginx/ssl /etc/nginx/ssl
+# COPY nginx/snippets /etc/nginx/snippets
+COPY nginx/sites-available /etc/nginx/sites-enabled
+
+COPY etc/supervisord.conf /etc/supervisord.conf
+COPY etc/uwsgi/wsgi.ini /etc/uwsgi/wsgi.ini
+ENTRYPOINT ["/usr/local/bin/supervisord"]

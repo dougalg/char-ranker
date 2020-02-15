@@ -1,0 +1,18 @@
+server {
+	location /api {
+		uwsgi_pass 127.0.0.1:3031;
+		include uwsgi_params;
+	}
+
+	location / {
+		# First attempt to serve request as file, then
+		# as directory, then fall back to displaying a 404.
+		try_files $uri $uri/ =404;
+	}
+
+	listen 80 default_server;
+	listen 5000 default_server;
+	# listen 443 ssl default_server;
+	# listen [::]:443 ssl default_server;
+	# include /etc/nginx/snippets/ssl.conf;
+}
