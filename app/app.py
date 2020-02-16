@@ -11,17 +11,19 @@ redis = Redis(host=os.environ['REDIS_HOST'], port=os.environ['REDIS_PORT'])
 
 CHAR_SET = 'CHAR SET'
 
-@app.route('/api/char/<char>', methods = ['PUT', 'DELETE'])
-def upDown(char):
-	assert_valid_char(char)
-	inc = -1 if request.method == 'DELETE' else 1
-	val = redis.zincrby(CHAR_SET, inc, char)
-	return char_response(char, val)
-
 @app.route('/api/char/<char>', methods = ['GET'])
 def retrieve(char):
 	assert_valid_char(char)
 	val = redis.zscore(CHAR_SET, char)
+	return char_response(char, val)
+
+@app.route('/api/char/<char>/<op>', methods = ['POST'])
+def upDown(char, op):
+	assert_valid_char(char)
+	if (op not in [ 'up', 'down' ]):
+		abort(404)
+	inc = -1 if op == 'down' else 1
+	val = redis.zincrby(CHAR_SET, inc, char)
 	return char_response(char, val)
 
 def char_response(char, val):
