@@ -23,7 +23,7 @@ def upDown(char, op):
 	if (op not in [ 'up', 'down' ]):
 		abort(404)
 	inc = -1 if op == 'down' else 1
-	val = redis.zincrby(CHAR_SET, inc, char)
+	val = redis.zincrby(CHAR_SET, char, inc)
 	return char_response(char, val)
 
 def char_response(char, val):

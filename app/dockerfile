@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:bionic
 
 ENV BIND_PORT 5000
 ENV REDIS_HOST localhost
