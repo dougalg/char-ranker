@@ -1,33 +1,43 @@
+"""
+Char-Ranker - Rank Chars
+"""
+
 import os
-import unicodedata
 import regex
 
-from flask import Flask, request, jsonify, abort, make_response
 from redis import Redis
+from flask import Flask, request, jsonify, abort, make_response
 
-app = Flask(__name__)
-redis = Redis(host=os.environ['REDIS_HOST'], port=os.environ['REDIS_PORT'])
+app = Flask(__name__) # pylint: disable=invalid-name
+redis = Redis(host=os.environ['REDIS_HOST'], port=os.environ['REDIS_PORT']) # pylint: disable=invalid-name
 
 
-CHAR_SET = 'CHAR SET'
+MAX_CHAR_LEN = 1
+CHAR_RANK_ZSET = 'CHAR_SET'
+ERROR_LONG_TEXT = "'{}' is not a valid char. It is too long: It is {} chars, but must not be more than {}"
 
-@app.route('/api/char/<char>', methods = ['GET'])
+@app.route('/api/char/<char>', methods=['GET'])
 def retrieve(char):
 	assert_valid_char(char)
-	val = redis.zscore(CHAR_SET, char)
+	val = redis.zscore(CHAR_RANK_ZSET, char)
 	return char_response(char, val)
 
-@app.route('/api/char/<char>/<op>', methods = ['POST'])
-def upDown(char, op):
+@app.route('/api/char/<char>/<op>', methods=['POST'])
+def up_down(char, op):
 	assert_valid_char(char)
-	if (op not in [ 'up', 'down' ]):
+	if (op not in ['up', 'down']):
 		abort(404)
 	inc = -1 if op == 'down' else 1
-	val = redis.zincrby(CHAR_SET, char, inc)
+	val = redis.zincrby(CHAR_RANK_ZSET, char, inc)
 	return char_response(char, val)
 
+@app.route('/api/char/top/<num>', methods=['GET'])
+def top_chars(num):
+	res = redis.zrange(CHAR_RANK_ZSET, 0, num, desc=True)
+	return []
+
 def char_response(char, val):
-	val = 0 if val == None else val
+	val = 0 if val is None else val
 	result = {
 		'char': char,
 		'val': val
@@ -35,12 +45,12 @@ def char_response(char, val):
 	return jsonify(result)
 
 def assert_valid_char(char):
-	if get_unicode_char_length(char) > 1:
-		abort(make_response(jsonify({ "error_message": "'{}' is not a valid char. It is too long: {}".format(char, get_unicode_char_length(char)) }), 404))
+	if get_unicode_char_length(char) > MAX_CHAR_LEN:
+		error_message = ERROR_LONG_TEXT.format(char, get_unicode_char_length(char), MAX_CHAR_LEN)
+		abort(make_response(jsonify({"error_message": error_message}), 404))
 
 def get_unicode_char_length(char):
 	return len(regex.findall(r'\X', char))
 
 if __name__ == "__main__":
-	bind_port = int(os.environ['BIND_PORT'])
-	app.run(host="0.0.0.0", debug=True, port=bind_port)
+	app.run(host="0.0.0.0", debug=True, port=int(os.environ['BIND_PORT']))
