@@ -20,7 +20,7 @@ ERROR_LONG_TEXT = "'{}' is not a valid char. It is too long: It is {} chars, but
 def retrieve(char):
 	assert_valid_char(char)
 	val = redis.zscore(CHAR_RANK_ZSET, char)
-	return char_response(char, val)
+	return jsonify(char_response(char, val))
 
 @app.route('/api/char/<char>/<op>', methods=['POST'])
 def up_down(char, op):
@@ -32,17 +32,16 @@ def up_down(char, op):
 	return char_response(char, val)
 
 @app.route('/api/char/top/<num>', methods=['GET'])
-def top_chars(num):
-	res = redis.zrange(CHAR_RANK_ZSET, 0, num, desc=True)
-	return []
+def top_chars(num=5):
+	res = redis.zrange(CHAR_RANK_ZSET, 0, num, desc=True, withscores=True)
+	return jsonify([char_response(item[0].decode('utf-8'), item[1]) for item in res])
 
 def char_response(char, val):
 	val = 0 if val is None else val
-	result = {
+	return {
 		'char': char,
 		'val': val
 	}
-	return jsonify(result)
 
 def assert_valid_char(char):
 	if get_unicode_char_length(char) > MAX_CHAR_LEN:
